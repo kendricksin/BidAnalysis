@@ -1,6 +1,7 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+import json
 
 def create_bar_chart(data, x, y, title, x_label, y_label):
     """
@@ -82,6 +83,36 @@ def create_box_plot(data, x, y, title, x_label, y_label):
     fig = px.box(data, x=x, y=y, title=title)
     fig.update_xaxes(title=x_label)
     fig.update_yaxes(title=y_label)
+    return fig
+
+def create_thailand_heatmap(data, province_column, value_column, title):
+    """
+    Create a heatmap of Thailand provinces using Plotly.
+    
+    :param data: DataFrame containing province data
+    :param province_column: Column name for provinces
+    :param value_column: Column name for values to be displayed
+    :param title: Chart title
+    :return: Plotly figure object
+    """
+    with open('app/data/thailand.json', 'r', encoding='utf-8') as f:
+        geojson = json.load(f)
+
+    fig = px.choropleth_mapbox(
+        data,
+        geojson=geojson,
+        locations=province_column,
+        color=value_column,
+        featureidkey="properties.name",
+        center={"lat": 13.7563, "lon": 100.5018},
+        mapbox_style="carto-positron",
+        zoom=4,
+        opacity=0.5,
+        title=title
+    )
+
+    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+
     return fig
 
 def create_heatmap(data, x, y, z, title, x_label, y_label, z_label):

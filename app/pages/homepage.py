@@ -1,5 +1,6 @@
 import streamlit as st
 import plotly.express as px
+from utils.visualiazations import create_bar_chart, create_pie_chart, create_histogram, create_thailand_heatmap
 
 def show(companies_df, projects_df):
     st.title('Procurement Dashboard - Homepage')
@@ -19,6 +20,13 @@ def show(companies_df, projects_df):
     st.subheader('Top 10 Companies by Project Count')
     top_companies = projects_df['winner'].value_counts().head(10)
     fig = px.bar(top_companies, x=top_companies.index, y=top_companies.values)
+    st.plotly_chart(fig)
+
+    # Project distribution by province (heatmap)
+    st.subheader('Project Distribution by Province')
+    province_distribution = projects_df['province'].value_counts().reset_index()
+    province_distribution.columns = ['province', 'count']
+    fig = create_thailand_heatmap(province_distribution, 'province', 'count', 'Project Count by Province')
     st.plotly_chart(fig)
 
     # Project distribution by department

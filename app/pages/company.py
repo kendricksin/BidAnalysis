@@ -1,62 +1,45 @@
 import streamlit as st
-import pandas as pd
-import plotly.express as px
 from fuzzywuzzy import process
 
-def fuzzy_search(query, choices, limit=5):
+def fuzzy_search(query, companies_df, limit=5):
+    if not query:
+        return []
+    
+    choices = companies_df['organization_id'].tolist() + companies_df['name_english'].tolist()
     results = process.extract(query, choices, limit=limit)
-    return [result[0] for result in results]
+    
+    unique_results = []
+    seen = set()
+    for result in results:
+        if result[0] not in seen:
+            unique_results.append(result[0])
+            seen.add(result[0])
+    
+    return unique_results
 
 def show(companies_df, projects_df):
     st.title('Company Search')
 
-    # Search bar
-    search_query = st.text_input('Enter company name')
+    search_query = st.text_input('Enter company name or ID')
 
-    if search_query:
-        company_names = companies_df['name_english'].tolist()
-        search_results = fuzzy_search(search_query, company_names)
+    company_name_to_id = dict(zip(companies_df['name_english'], companies_df['organization_id']))
+    company_id_to_name = dict(zip(companies_df['organization_id'], companies_df['name_english']))
 
-        selected_company = st.selectbox('Select a company', search_results)
+    suggestions = fuzzy_search(search_query, companies_df)
 
-        if selected_company:
-            st.subheader(f'Statistics for {selected_company}')
+    if suggestions:
+        selected_item = st.selectbox("Select a company:", suggestions, key="company_select")
+        if selected_item in company_id_to_name:
+            selected_company_id = selected_item
+            selected_company_name = company_id_to_name[selected_item]
+        else:
+            selected_company_name = selected_item
+            selected_company_id = company_name_to_id[selected_item]
 
-            # Get company data
-            company_data = companies_df[companies_df['name_english'] == selected_company].iloc[0]
-            company_projects = projects_df[projects_df['winner'] == selected_company]
+        if st.button(f"View details for {selected_company_name}"):
+            st.experimental_set_query_params(page="company", id=selected_company_id)
+            st.experimental_rerun()
+    else:
+        st.write("No matches found. Please try a different search term.")
 
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Total Projects", len(company_projects))
-            with col2:
-                st.metric("Total Project Value", f"${company_projects['project_money'].astype(float).sum():,.0f}")
-
-            # Project budget distribution
-            st.subheader('Project Budget Distribution')
-            fig = px.histogram(company_projects, x='project_money', nbins=30)
-            fig.update_xaxes(title='Project Value')
-            fig.update_yaxes(title='Count')
-            st.plotly_chart(fig)
-
-            # Department distribution
-            st.subheader('Department Distribution')
-            dept_dist = company_projects['dept_name'].value_counts()
-            fig = px.pie(dept_dist, values=dept_dist.values, names=dept_dist.index)
-            st.plotly_chart(fig)
-
-            # Province distribution
-            st.subheader('Province Distribution')
-            province_dist = company_projects['province'].value_counts()
-            fig = px.pie(province_dist, values=province_dist.values, names=province_dist.index)
-            st.plotly_chart(fig)
-
-            # Project duration distribution
-            st.subheader('Project Duration Distribution')
-            company_projects['contract_date'] = pd.to_datetime(company_projects['contract_date'])
-            company_projects['contract_finish_date'] = pd.to_datetime(company_projects['contract_finish_date'])
-            company_projects['duration'] = (company_projects['contract_finish_date'] - company_projects['contract_date']).dt.days
-            fig = px.histogram(company_projects, x='duration', nbins=30)
-            fig.update_xaxes(title='Duration (days)')
-            fig.update_yaxes(title='Count')
-            st.plotly_chart(fig)
+    st.write("You can also access company details directly by using the URL format: `localhost:8501/?page=company&id=COMPANY_ID`")
