@@ -1,6 +1,7 @@
 import streamlit as st
 import plotly.express as px
-from utils.visualiazations import create_bar_chart, create_pie_chart, create_histogram, create_thailand_heatmap
+from utils.visualiazations import create_thailand_bubble_map
+from utils.province_mapping import province_to_coordinates
 
 def show(companies_df, projects_df):
     st.title('Procurement Dashboard - Homepage')
@@ -22,11 +23,19 @@ def show(companies_df, projects_df):
     fig = px.bar(top_companies, x=top_companies.index, y=top_companies.values)
     st.plotly_chart(fig)
 
-    # Project distribution by province (heatmap)
+    # Project distribution by province (bubble map)
     st.subheader('Project Distribution by Province')
     province_distribution = projects_df['province'].value_counts().reset_index()
     province_distribution.columns = ['province', 'count']
-    fig = create_thailand_heatmap(province_distribution, 'province', 'count', 'Project Count by Province')
+    
+    # Map province names to coordinates
+    province_distribution['lat'] = province_distribution['province'].map(lambda x: province_to_coordinates.get(x, {}).get('lat'))
+    province_distribution['lon'] = province_distribution['province'].map(lambda x: province_to_coordinates.get(x, {}).get('lon'))
+    
+    # Remove rows with missing coordinates
+    province_distribution = province_distribution.dropna(subset=['lat', 'lon'])
+    
+    fig = create_thailand_bubble_map(province_distribution, 'lat', 'lon', 'count', 'Project Count by Province')
     st.plotly_chart(fig)
 
     # Project distribution by department
